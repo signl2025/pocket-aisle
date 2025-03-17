@@ -22,17 +22,11 @@ class DictionaryController extends GetxController {
   Future<void> fetchDictionary(BuildContext context) async {
     try {
       final fetchedDictionary = await APIs.getDictionary(context); //context means 'in this part of the application process'
-
       fetchedDictionary.sort((a, b) => a.word.compareTo(b.word)); //sorts the dictionary
-
       dictionary.assignAll(fetchedDictionary); //same as before but from the newly fetched dictionary
-      
       Pref.dictionary = fetchedDictionary;
-
       Pref.validateBookmarks(); //validate bookmarks after reading dictionary
-      
       update();
-
       if (await Pref.isAutoDownloadEnabled) {
         downloadMissingVideos();
       }

@@ -17,37 +17,14 @@ class APIs {
   static String vRepoLink =
       "https://raw.githubusercontent.com/signl2025/pocketaislevids/main/"; //link for video repository
 
-  //returns the time the file in the link last got updated
-  static Future<DateTime?> _getRemoteLastModified(String url) async {
-    var response = await Dio().head(url);
-
-    if (response.headers['last-modified'] != null) {
-      return HttpDate.parse(response.headers['last-modified']!.first);
-    }
-
-    return null;
-  }
-
-  //checks if dictionary was updated
-  static Future<bool> _isDictionaryUpdated() async {
-    DateTime? remoteLastModified = await _getRemoteLastModified(dictionaryLink);
-    if (remoteLastModified == null) return false;
-
-    DateTime? localLastModified = Pref.dictionaryLastUpdated;
-
-    //return true if no local last modified || false if online file is later than local
-    return localLastModified == null || remoteLastModified.isAfter(localLastModified); 
-  }
-
   //returns the dictionary
   static Future<List<WordModel>> getDictionary(BuildContext context) async {
     List<WordModel> dictionary = [];
     File dictionaryFile = await getDictionaryFile();
     bool isCorrupted = await _isDictionaryCorrupted(dictionaryFile);
-    bool needsUpdate = await _isDictionaryUpdated();
 
     //download dictionary if either
-    if (isCorrupted || needsUpdate) {
+    if (isCorrupted) {
       await _downloadDictionary(context);
       Pref.setDictionaryLastUpdated(DateTime.now());
     }
