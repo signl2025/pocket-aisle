@@ -64,6 +64,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
           oldFile.rename(file.path);
           _showFailDialog();
         }
+      }else{ //if for some reason the dictionary file was deleted during runtime before the update attempt
+        await _dictController.fetchDictionary(context); //redownload and update dictionary content
+        if(await file.exists()){
+          _showSuccessDialog();
+        }else{
+          _showFailDialog();
+        }
       }
     }else{ //if no internet
       _showFailDialog();

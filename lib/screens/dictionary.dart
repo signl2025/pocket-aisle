@@ -71,31 +71,28 @@ class _DictionaryScreenState extends State<DictionaryScreen> with SingleTickerPr
                   controller: _tabController,
                   tabs: const [
                     Tab( //tab for search
-                      child: Row(
+                      child: Column(
                         mainAxisSize: MainAxisSize.min,
                         children: [
                           Icon(Icons.search),
-                          SizedBox(width: 8),
                           Text('Search'),
                         ],
                       ),
                     ),
                     Tab( //tab for categories
-                      child: Row(
+                      child: Column(
                         mainAxisSize: MainAxisSize.min,
                         children: [
                           Icon(Icons.category),
-                          SizedBox(width: 8),
                           Text('Categories'),
                         ],
                       ),
                     ),
                     Tab( //tab for bookmarks
-                      child: Row(
+                      child: Column(
                         mainAxisSize: MainAxisSize.min,
                         children: [
                           Icon(Icons.bookmarks),
-                          SizedBox(width: 8),
                           Text('Bookmarks'),
                         ],
                       ),
@@ -255,7 +252,7 @@ class _DictionaryScreenState extends State<DictionaryScreen> with SingleTickerPr
                   )
                   .toList(),
         );
-      } else {
+      } else { //else show the contents of that category
         return Column(
           children: [
             ListTile(
@@ -350,7 +347,6 @@ class _DictionaryScreenState extends State<DictionaryScreen> with SingleTickerPr
         itemCount: bookmarkedWords.length,
         itemBuilder: (context, index) {
           WordModel word = bookmarkedWords[index];
-
           return Card(
             child: ListTile(
               title: Text(
