@@ -3,12 +3,15 @@ import 'dart:io';
 //path package is for platform-agnotic file pathing
 //scheduler is to ensure the video loads
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:get/get.dart';
 import 'package:media_kit/media_kit.dart';
 import 'package:media_kit_video/media_kit_video.dart';
 import 'package:path/path.dart' as p;
 import 'package:flutter/scheduler.dart';
 
 import '../apis/apis.dart';
+import '../controllers/dictionary_controller.dart';
 import '../helpers/pref.dart';
 import '../models/word_model.dart';
 
@@ -24,6 +27,7 @@ class WordScreen extends StatefulWidget {
 }
 
 class _WordScreenState extends State<WordScreen> {
+  final DictionaryController _dictController = Get.find<DictionaryController>();
   //player is the media kit player, video controller is for video playback output
   late Player _player;
   VideoController? _controller;
@@ -37,6 +41,9 @@ class _WordScreenState extends State<WordScreen> {
 
   @override
   void initState() {
+    if (_dictController.dictionary.isEmpty){
+      _dictController.fetchDictionary(context);
+    }
     super.initState();
     _player = Player();
     _initializeVideoPath();
@@ -79,6 +86,7 @@ class _WordScreenState extends State<WordScreen> {
       _reinitializePlayer(); 
     }
 
+    _player.setVolume(0);
     //sets controlller to the players controller?? redundancy, but might break so keep it
     _controller ??= VideoController(_player);
 
@@ -141,6 +149,34 @@ class _WordScreenState extends State<WordScreen> {
     }
   }
 
+  //gets random words from the pool of words in the dictionary that aren't bookmarked
+  //random is the random number generator
+  List<WordModel> getRefWords() {
+    List<WordModel> refWords = [];
+    for(WordModel word in _dictController.dictionary){
+      for(String id in widget.word.refId){
+        if(word.id == id){
+          refWords.add(word);
+        }
+      }
+    }
+
+    if (refWords.isEmpty) {
+      return [
+        WordModel(
+          id: '',
+          word: "",
+          category: [],
+          refId: [],
+          vFileName: '',
+          definition: "",
+        ),
+      ];
+    }
+
+    return refWords;
+  }
+
   //requirement for media player
   @override
   void dispose() {
@@ -148,9 +184,51 @@ class _WordScreenState extends State<WordScreen> {
     _isPlayerDisposed = true; 
     super.dispose();
   }
+  
+  void _showPlaybackSpeedDialog(BuildContext context) {
+    double currentSpeed = _controller!.player.state.rate;
+    showDialog(
+      context: context,
+      builder: (context) {
+        return StatefulBuilder(
+          builder: (context, setState) {
+            return AlertDialog(
+              title: Text('Select Playback Speed'),
+              content: Slider(
+                min: 0.25,
+                max: 2.0,
+                value: currentSpeed,
+                divisions: 7,
+                label: '$currentSpeed',
+                onChanged: (value) {
+                  setState(() {
+                    currentSpeed = value;
+                  });
+                  _controller?.player.setRate(value); // update rate immediately
+                },
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () {
+                    Navigator.pop(context);
+                  },
+                  child: Text('Close'),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
+    List<WordModel> refWordList = getRefWords();
+    List<String> refWords = [];
+    for(int i = 0; i < refWordList.length; i++){
+      refWords.add(refWordList[i].word);
+    }
     return Scaffold( //contents of the word screen
       appBar: AppBar(
         title: Text(
@@ -173,24 +251,58 @@ class _WordScreenState extends State<WordScreen> {
             children: [
               Text(
                 "Category: ${widget.word.category.join(', ')}",
-                style: TextStyle(fontSize: 18, color: Colors.grey[700]),
+                style: TextStyle(fontSize: 14, color: Colors.grey[700]),
               ),
               SizedBox(height: 10),
               Text(
                 "Definition: ${widget.word.definition}",
-                style: TextStyle(fontSize: 16),
+                style: TextStyle(fontSize: 18),
+              ),
+              SizedBox(height: 10),
+              Text(
+                "Related Words: ${refWords.join(', ')}",
+                style: TextStyle(fontSize: 14, color: Colors.grey[700]),
               ),
               SizedBox(height: 20),
 
               if (_isVideoAvailable)
                 AspectRatio(
                   aspectRatio: 16 / 9,
-                  child:
+                  child: Stack(
+                    children: [
                       _videoPath == null || _controller == null
-                          ? Center(
-                            child: CircularProgressIndicator(),
-                          ) 
-                          : Video(controller: _controller!),
+                          ? Center(child: CircularProgressIndicator())
+                          : Video(
+                              controller: _controller!,
+                            ),
+                      // playback button
+                      Positioned(
+                        top: 10,
+                        right: 10,
+                        child: Column(
+                          children: [
+                            IconButton(
+                              icon: Icon(
+                                Icons.speed,
+                                color: Colors.white,
+                              ),
+                              iconSize: 40,
+                              onPressed: () {
+                                _showPlaybackSpeedDialog(context);
+                              },
+                            ),
+                            Text(
+                              'Playback Speed',
+                              style: TextStyle(
+                                fontSize: 10,
+                                color: Colors.white,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
                 )
               else
                 Center(

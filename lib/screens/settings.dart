@@ -2,6 +2,7 @@ import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:pocket_aisle/controllers/categories_controller.dart';
 
 import '../apis/apis.dart';
 import '../controllers/autodl_controller.dart';
@@ -21,6 +22,7 @@ class SettingsScreen extends StatefulWidget {
 class _SettingsScreenState extends State<SettingsScreen> {
   final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
   final DictionaryController _dictController = Get.find<DictionaryController>();
+  final CategoriesController _catController = Get.find<CategoriesController>();
 
   final RxBool _isDarkModeRx = false.obs;
   final RxBool _isAutoDownloadEnabledRx = false.obs;
@@ -47,7 +49,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   
   //deletes the current dictionary, so it gets replaced right away with latest file
   Future<void> deleteCurrentDictionary() async {
-    if (await checkOnlineDictionary()) {
+    if (await checkOnline()) {
       File file = await APIs.getDictionaryFile();
       if(await file.exists()){
         String oldFilePath = file.path.replaceAll(".csv", '_old.csv'); //path for renamed old file
@@ -59,26 +61,58 @@ class _SettingsScreenState extends State<SettingsScreen> {
         
         if(await file.exists()){ //if download was successful, delete old file
           oldFile.delete();
-          _showSuccessDialog();
+          _showSuccessDDialog();
         }else{ //otherwise, revert to old file
           oldFile.rename(file.path);
-          _showFailDialog();
+          _showFailDDialog();
         }
       }else{ //if for some reason the dictionary file was deleted during runtime before the update attempt
         await _dictController.fetchDictionary(context); //redownload and update dictionary content
         if(await file.exists()){
-          _showSuccessDialog();
+          _showSuccessDDialog();
         }else{
-          _showFailDialog();
+          _showFailDDialog();
         }
       }
     }else{ //if no internet
-      _showFailDialog();
+      _showFailDDialog();
+    }
+  }
+  
+  //deletes the current dictionary, so it gets replaced right away with latest file
+  Future<void> deleteCurrentCategories() async {
+    if (await checkOnline()) {
+      File file = await APIs.getCategoriesFile();
+      if(await file.exists()){
+        String oldFilePath = file.path.replaceAll(".txt", '_old.txt'); //path for renamed old file
+        await file.copy(oldFilePath); //duplicating old dictionary
+        File oldFile = File(oldFilePath); //variable for the old dictionary
+
+        file.delete();
+        await _catController.fetchCategories(context); //redownload and update dictionary content
+        
+        if(await file.exists()){ //if download was successful, delete old file
+          oldFile.delete();
+          _showSuccessCDialog();
+        }else{ //otherwise, revert to old file
+          oldFile.rename(file.path);
+          _showFailCDialog();
+        }
+      }else{ //if for some reason the dictionary file was deleted during runtime before the update attempt
+        await _catController.fetchCategories(context); //redownload and update dictionary content
+        if(await file.exists()){
+          _showSuccessCDialog();
+        }else{
+          _showFailCDialog();
+        }
+      }
+    }else{ //if no internet
+      _showFailCDialog();
     }
   }
 
   //checks if connected to the internet
-  Future<bool> checkOnlineDictionary() async {
+  Future<bool> checkOnline() async {
     try {
       final result = await InternetAddress.lookup('example.com'); //dont know why replacing this with the dictionary link doesnt work
       if (result.isNotEmpty && result[0].rawAddress.isNotEmpty) {
@@ -91,7 +125,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }
 
   //shows a dialog when you press the update icon, but only if successful
-  Future<void> _showSuccessDialog() async {
+  Future<void> _showSuccessDDialog() async {
     return showDialog<void>(
       context: context,
       barrierDismissible: false, 
@@ -123,7 +157,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }
 
   //shows a dialog when you press the update icon, but fail edition
-  Future<void> _showFailDialog() async {
+  Future<void> _showFailDDialog() async {
     return showDialog<void>(
       context: context,
       barrierDismissible: false, 
@@ -138,6 +172,71 @@ class _SettingsScreenState extends State<SettingsScreen> {
             child: ListBody(
               children: <Widget>[
                 Text('Dictionary failed to update'),
+                Text('Please check your internet connection'),
+              ],
+            ),
+          ),
+          actions: <Widget>[
+            TextButton(
+              child: const Text('Ok'),
+              onPressed: () {
+                Navigator.of(context).pop();
+              },
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  //shows a dialog when you press the update icon, but only if successful
+  Future<void> _showSuccessCDialog() async {
+    return showDialog<void>(
+      context: context,
+      barrierDismissible: false, 
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: const Text('Update Succeeded!'),
+          icon: Icon(
+            Icons.verified, 
+            color: Colors.green,
+          ),
+          content: const SingleChildScrollView(
+            child: ListBody(
+              children: <Widget>[
+                Text('Categories updated successfully!'),
+              ],
+            ),
+          ),
+          actions: <Widget>[
+            TextButton(
+              child: const Text('Ok'),
+              onPressed: () {
+                Navigator.of(context).pop();
+              },
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  //shows a dialog when you press the update icon, but fail edition
+  Future<void> _showFailCDialog() async {
+    return showDialog<void>(
+      context: context,
+      barrierDismissible: false, 
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: const Text('Update Failed!'),
+          icon: Icon(
+            Icons.error, 
+            color: Colors.red,
+          ),
+          content: const SingleChildScrollView(
+            child: ListBody(
+              children: <Widget>[
+                Text('Categories failed to update'),
                 Text('Please check your internet connection'),
               ],
             ),
@@ -226,7 +325,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
             }),
             const SizedBox(height: 20),
             Text(
-              "Update Dictionary",
+              "Updates",
               style: TextStyle(fontSize: 18, fontWeight: FontWeight.w500),
             ),
             ListTile(
@@ -237,25 +336,20 @@ class _SettingsScreenState extends State<SettingsScreen> {
               },
             icon: Icon(Icons.update)),
             ),
+            ListTile(
+            title: Text('Update Current Categories File'),
+            trailing: IconButton(
+              onPressed: () {
+                deleteCurrentCategories();
+              },
+            icon: Icon(Icons.update)),
+            ),
           ],
         ),
       ),
       drawer: Drawer(
         child: ListView(
           children: [
-            ListTile(
-              leading: Icon(Icons.home_filled),
-              title: const Text(
-                'Home',
-                style: TextStyle(
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-              onTap: () {
-                Navigator.pop(context); 
-                Get.toNamed('/'); 
-              },
-            ),
             ListTile(
               leading: Icon(Icons.local_library),
               title: const Text(

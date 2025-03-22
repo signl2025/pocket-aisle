@@ -7,6 +7,7 @@ import 'package:media_kit/media_kit.dart';
 import 'common/theme.dart';
 import 'controllers/autodl_controller.dart';
 import 'controllers/bookmark_controller.dart';
+import 'controllers/categories_controller.dart';
 import 'controllers/dictionary_controller.dart';
 import 'controllers/theme_controller.dart';
 import 'helpers/pref.dart';
@@ -29,6 +30,7 @@ void main() async {
   Get.put(BookmarkController());
   Get.put(ThemeController());
   Get.put(AutoDownloadController());
+  Get.put(CategoriesController());
 
   bool isDarkMode = await Pref.isDarkMode;
   bool isAutoDownloadEnabled = await Pref.isAutoDownloadEnabled;

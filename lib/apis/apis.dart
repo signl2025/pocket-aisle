@@ -5,8 +5,10 @@ import 'dart:io';
 //dio package is for downloading files
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
+import 'package:get/get.dart';
 import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
+import 'package:pocket_aisle/controllers/dictionary_controller.dart';
 
 import '../helpers/pref.dart';
 import '../models/word_model.dart';
@@ -14,6 +16,8 @@ import '../models/word_model.dart';
 class APIs {
   static String dictionaryLink =
       "https://raw.githubusercontent.com/signl2025/pocket-aisle-repo/main/dictionary.csv"; //link for dictionary
+  static String categoryLink =
+      "https://raw.githubusercontent.com/signl2025/pocket-aisle-repo/main/categories.txt"; //link for categories.txt
   static String vRepoLink =
       "https://raw.githubusercontent.com/signl2025/pocketaislevids/main/"; //link for video repository
 
@@ -41,12 +45,44 @@ class APIs {
     return dictionary;
   }
 
+  //checks if categories.txt exists. if not, downloads it
+  static Future<List<String>> getCategories(BuildContext context) async {
+    List<String> categories = [];
+    File categoriesFile = await getCategoriesFile();
+    bool isCorrupted = await _isCategoriesCorrupted(categoriesFile);
+    DictionaryController dictController = Get.find<DictionaryController>();
+
+    //download categories if either
+    if (isCorrupted) {
+      await _downloadCategories(context);
+    }
+
+    if(await categoriesFile.exists()){
+      categories = dictController.dictionary
+                  .expand((word) => word.category)
+                  .toSet().toList();
+    }
+
+    //updates the database to match the contents of the current dictionary
+    Pref.categories = categories;
+
+    return categories;
+  }
+
   //downloads the dictionary
   static Future<void> _downloadDictionary(BuildContext context) async {
-    final path = await _localPath;
+    final path = await localPath;
     final file = File(p.join(path, 'dictionary.csv'));
 
     await Dio().download(dictionaryLink, file.path);
+  }
+
+  //downloads the categories.txt file
+  static Future<void> _downloadCategories(BuildContext context) async {
+    final path = await localPath;
+    final file = File(p.join(path, 'categories.txt'));
+
+    await Dio().download(categoryLink, file.path);
   }
 
   //why two downloadvideo methods? One is for access on other files, other is for actually downloading video
@@ -120,7 +156,7 @@ class APIs {
   //get video path for any platform
   static Future<String> getVideoPathForPlatform() async {
     if (Platform.isAndroid) { 
-      final videoDir = Directory(p.join(await _localPath, 'videos')); //leads to android/data/com.example.pocket-aisle/files/videos
+      final videoDir = Directory(p.join(await localPath, 'videos')); //leads to android/data/com.example.pocket-aisle/files/videos
 
       if (!await videoDir.exists()) {
         await videoDir.create(recursive: true); //creates the folder if it doesn;t exist, recursive to make sure entire path exists
@@ -128,7 +164,7 @@ class APIs {
 
       return videoDir.path;
     } else {
-      final videoDir = Directory(p.join(await _localPath, 'videos')); //My Documents/Pocket AISLE/videos
+      final videoDir = Directory(p.join(await localPath, 'videos')); //My Documents/Pocket AISLE/videos
 
       if (!await videoDir.exists()) {
         await videoDir.create(recursive: true);
@@ -139,7 +175,7 @@ class APIs {
   }
 
   //returns platform-specific local path 
-  static Future<String> get _localPath async {
+  static Future<String> get localPath async {
     if (Platform.isAndroid) {
       final directory = await getExternalStorageDirectory(); //leads to android/data/com.example.pocket-aisle/files
 
@@ -153,9 +189,16 @@ class APIs {
 
   //returns the dictionary file from the application's documents folder
   static Future<File> getDictionaryFile() async {
-    final path = await _localPath;
+    final path = await localPath;
 
     return File(p.join(path, 'dictionary.csv'));
+  }
+
+  //returns the dictionary file from the application's documents folder
+  static Future<File> getCategoriesFile() async {
+    final path = await localPath;
+
+    return File(p.join(path, 'categories.txt'));
   }
 
   //checks if dictionary is corrupt
@@ -172,6 +215,15 @@ class APIs {
     } catch (e) {
       return true;
     }
+  }
+
+  //checks if dictionary is corrupt
+  static Future<bool> _isCategoriesCorrupted(File categoriesFile) async {
+    if (!await categoriesFile.exists()) return true;
+
+    if (await categoriesFile.length() == 0) return true;
+
+    return false;
   }
 
   //manual conversion of dictionary csv to a json format readable by the hive's box

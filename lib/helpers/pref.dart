@@ -86,6 +86,35 @@ class Pref {
     }
   }
 
+  //returns the current dictionary content
+  static List<String> get categories {
+    final data = _box.get('categories');
+    if (data == null) {
+      return [];
+    }
+    try {
+      final decodedData = jsonDecode(data); //decodes the data from the box
+      
+      //returns a list of word objects from the decoded data
+      return List<String>.from(
+        decodedData,
+      );
+    } catch (e) {
+      return [];
+    }
+  }
+
+  //changes the current dictionary content (the list of word objects)
+  static set categories(List<String> c) {
+    try {
+      String encodedData = jsonEncode(c); //encodes the data into the box
+
+      //puts the encoded data into the box, replacing the value of the 'dictionary' in the box
+      _box.put('categories', encodedData); 
+    } catch (e) {
+    }
+  }
+
   //changes the current dictionary content (the list of word objects)
   static set dictionary(List<WordModel> w) {
     try {
