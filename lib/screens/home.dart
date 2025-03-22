@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:get/get.dart';
+import 'package:pocket_aisle/controllers/categories_controller.dart';
 
 import '../controllers/dictionary_controller.dart'; // For navigation
 
@@ -9,6 +10,8 @@ class HomeScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     final DictionaryController dictController =Get.find<DictionaryController>();
     dictController.fetchDictionary(context);
+    final CategoriesController catController =Get.find<CategoriesController>();
+    catController.fetchCategories(context);
     return Scaffold(
       body: GestureDetector(
         onTap: () {
