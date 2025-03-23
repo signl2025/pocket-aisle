@@ -286,7 +286,6 @@ class _WordScreenState extends State<WordScreen> {
                                 Icons.speed,
                                 color: Colors.white,
                               ),
-                              iconSize: 40,
                               onPressed: () {
                                 _showPlaybackSpeedDialog(context);
                               },

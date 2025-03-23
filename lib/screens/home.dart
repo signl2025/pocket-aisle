@@ -3,15 +3,23 @@ import 'package:flutter_svg/flutter_svg.dart';
 import 'package:get/get.dart';
 import 'package:pocket_aisle/controllers/categories_controller.dart';
 
-import '../controllers/dictionary_controller.dart'; // For navigation
+import '../controllers/bookmark_controller.dart';
+import '../controllers/dictionary_controller.dart';
+import '../helpers/pref.dart'; // For navigation
 
 class HomeScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
-    final DictionaryController dictController =Get.find<DictionaryController>();
+    //fetch dictionary, and validate bookmarks to remove non-existent words
+    final DictionaryController dictController = Get.find<DictionaryController>();
     dictController.fetchDictionary(context);
-    final CategoriesController catController =Get.find<CategoriesController>();
+    Pref.validateBookmarks();
+    //fetch categories from file
+    final CategoriesController catController = Get.find<CategoriesController>();
     catController.fetchCategories(context);
+    //fetch bookmarks from pref data
+    final BookmarkController bookController = Get.find<BookmarkController>();
+    bookController.fetchBookmarks();
     return Scaffold(
       body: GestureDetector(
         onTap: () {
