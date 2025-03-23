@@ -3,6 +3,7 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:media_kit/media_kit.dart';
+import 'package:window_manager/window_manager.dart';
 
 import 'common/theme.dart';
 import 'controllers/autodl_controller.dart';
@@ -23,6 +24,24 @@ void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   MediaKit.ensureInitialized();
   await Pref.initializeHive();
+
+  // Initialize window manager for desktop platforms
+  if (!GetPlatform.isMobile) {
+    await windowManager.ensureInitialized();
+    
+    WindowOptions windowOptions = WindowOptions(
+      size: Size(325, 650), // Set window size (Width x Height)
+      center: true, // Center the window on screen
+      minimumSize: Size(325, 650), // Optional: Set a minimum window size
+      alwaysOnTop: false,
+      titleBarStyle: TitleBarStyle.normal, // Keep the title bar
+    );
+    
+    windowManager.waitUntilReadyToShow(windowOptions, () async {
+      await windowManager.show();
+      await windowManager.focus();
+    });
+  }
 
   //start controllers for each
   //controllers control behavior of widgets, and also help pass on data from pref to wherever its needed

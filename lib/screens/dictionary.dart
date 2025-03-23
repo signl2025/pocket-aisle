@@ -1,12 +1,14 @@
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:get/get.dart';
-import 'package:pocket_aisle/controllers/categories_controller.dart';
 
 import '../apis/apis.dart';
 import '../controllers/bookmark_controller.dart';
+import '../controllers/categories_controller.dart';
 import '../controllers/dictionary_controller.dart';
 import '../models/word_model.dart';
 import '../widgets/custom_app_bar.dart';
@@ -20,7 +22,6 @@ class DictionaryScreen extends StatefulWidget {
 
 //why singletickerproviderstatemixin? required for tab controller
 class _DictionaryScreenState extends State<DictionaryScreen> with SingleTickerProviderStateMixin {
-  late TabController _tabController;
   final DictionaryController _dictController = Get.find<DictionaryController>();
   final BookmarkController _bookmarkController = Get.find<BookmarkController>();
   final CategoriesController _categoriesController = Get.find<CategoriesController>();
@@ -33,30 +34,36 @@ class _DictionaryScreenState extends State<DictionaryScreen> with SingleTickerPr
   final RxString _selectedCategory = ''.obs;
   final Rx<WordModel?> _selectedWord = Rx<WordModel?>(null);
   final RxString _searchQuery = ''.obs;
+  final PageController _pageController = PageController();
 
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(
-      length: 3,
-      vsync: this,
-    );
-
-    //adds listener to the tab controller, so it can listen to changes for each of the variables needed
-    _tabController.addListener(() {
-      if (_tabController.indexIsChanging) { //only runs when tabs switch
-        setState(() {
-          _selectedWord.value = null; 
-          _selectedCategory.value = ''; 
-          _searchQuery.value = ''; 
-        });
-        _searchController.clear(); //clears the search bar
-      }
-    });
 
     _checkIcons();
     _loadIcons();
     _loadIconColors();
+  }
+
+  
+  void _handleKeyEvent(RawKeyEvent event) {
+    if (event is RawKeyDownEvent) {
+      if (event.logicalKey == LogicalKeyboardKey.arrowLeft) {
+        if (_pageController.page! > 0) {
+          _pageController.previousPage(
+            duration: Duration(milliseconds: 300),
+            curve: Curves.easeInOut,
+          );
+        }
+      } else if (event.logicalKey == LogicalKeyboardKey.arrowRight) {
+        if (_pageController.page! < (_categoriesController.categories.length / 6).ceil() - 1) {
+          _pageController.nextPage(
+            duration: Duration(milliseconds: 300),
+            curve: Curves.easeInOut,
+          );
+        }
+      }
+    }
   }
 
   Future<void> _checkIcons() async{
@@ -101,6 +108,7 @@ class _DictionaryScreenState extends State<DictionaryScreen> with SingleTickerPr
       '123': Icons.onetwothree,
       'palette': Icons.palette,
       'tour': Icons.tour,
+      'bookmark': Icons.bookmark,
     }[iconName] ?? Icons.help;
   }
 
@@ -112,11 +120,12 @@ class _DictionaryScreenState extends State<DictionaryScreen> with SingleTickerPr
       'mood': Colors.green,
       'pets': Colors.brown,
       'calendar_month': Colors.grey,
-      'waving_hand': Colors.yellow,
-      'family_restroom': Colors.black,
+      'waving_hand': const Color.fromARGB(255, 158, 135, 52),
+      'family_restroom': Colors.pinkAccent,
       '123': Colors.lightGreen,
       'palette': Colors.orange,
       'tour': Colors.deepOrange,
+      'bookmark': Colors.indigo,
     }[colorName] ?? Colors.white;
   }
 
@@ -130,87 +139,43 @@ class _DictionaryScreenState extends State<DictionaryScreen> with SingleTickerPr
     if (_categoriesController.categories.isEmpty){
       _categoriesController.fetchCategories(context);
     }
+
     return Scaffold(
-      key: _scaffoldKey,
-      appBar: PreferredSize(
-        preferredSize: const Size.fromHeight(
-          kToolbarHeight + 48,
+        key: _scaffoldKey,
+        appBar: PreferredSize(
+          preferredSize: const Size.fromHeight(
+            kToolbarHeight + 48,
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              CustomAppBar(
+                title: 'Pocket\n AISLE',
+                onMenuPressed: () {
+                  _scaffoldKey.currentState?.openDrawer(); //opens menu
+                },
+              ),
+            ],
+          ),
         ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            CustomAppBar(
-              title: ' Assistive Instruction for \nSign Language Education',
-              onMenuPressed: () {
-                _scaffoldKey.currentState?.openDrawer(); //opens menu
-              },
-            ),
-            Wrap(
-              children: [
-                TabBar(
-                  controller: _tabController,
-                  tabs: const [
-                    Tab( //tab for categories
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Icon(Icons.category),
-                          Text('Categories'),
-                        ],
-                      ),
-                    ),
-                    Tab( //tab for search
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Icon(Icons.search),
-                          Text('Search'),
-                        ],
-                      ),
-                    ),
-                    Tab( //tab for bookmarks
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Icon(Icons.bookmarks),
-                          Text('Bookmarks'),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-              ],
-            ),
-          ],
+        drawer: _buildDrawer(), //drawer = the menu that pops up when clicking menu button
+        body: SizedBox.expand(
+          child: 
+            _buildContent(),
         ),
-      ),
-      drawer: _buildDrawer(), //drawer = the menu that pops up when clicking menu button
-      body: SizedBox.expand(
-        child: TabBarView(
-          controller: _tabController,
-          children: [
-            _buildCategoriesTab(),
-            _buildSearchTab(),
-            _buildBookmarksTab(),
-          ],
-        ),
-      ),
-    );
+      );
   }
 
-  //builds the search tab
-  Widget _buildSearchTab() {
+  //builds the content
+  Widget _buildContent() {
     return Obx(() {
-      //selected word is the word you click, if you click one it will change the value of selected word and redirect you
-      //if you click the back button on the word screen, you come back to this tab
       if (_selectedWord.value != null) {
         return WordScreen(
           word: _selectedWord.value!,
-          onBack: () => _selectedWord.value = null, 
+          onBack: () => _selectedWord.value = null,
         );
       }
 
-      //the contents of the search tab
       return Column(
         children: [
           Padding(
@@ -226,63 +191,125 @@ class _DictionaryScreenState extends State<DictionaryScreen> with SingleTickerPr
               },
             ),
           ),
+
           Expanded(
-            child: Obx(() {
-              List<WordModel> filteredWords = //finds words that contain what you're searching for
-                  _dictController.dictionary
-                      .where(
-                        (word) => word.word.toLowerCase().contains(
-                          _searchQuery.value.toLowerCase(),
-                        ),
-                      )
-                      .toList();
+            child: _searchQuery.value.isNotEmpty
+                ? _buildSearchResults() // show search results if there's input
+                : _selectedCategory.value.isNotEmpty
+                    ? _buildCategoryWords() // show words of a selected category
+                    : _buildCategoryGrid(), // show category grid by default
+          ),
+        ],
+      );
+    });
+  }
 
-              //if no words satisfy your search entry
-              if (filteredWords.isEmpty) {
-                return Center(child: Text('No words found'));
+  Widget _buildSearchResults() {
+    List<WordModel> filteredWords = _dictController.dictionary
+        .where(
+          (word) => word.word.toLowerCase().contains(
+            _searchQuery.value.toLowerCase(),
+          ),
+        )
+        .toList();
+
+    if (filteredWords.isEmpty) {
+      return Center(child: Text('No words found'));
+    }
+
+    return ListView.builder(
+      itemCount: filteredWords.length,
+      itemBuilder: (context, index) {
+        WordModel word = filteredWords[index];
+
+        return _buildWordTile(word);
+      },
+    );
+  }
+
+  Widget _buildCategoryGrid() {
+    return Focus(
+      autofocus: true,
+      onKey: (node, event) {
+        _handleKeyEvent(event);
+        return KeyEventResult.handled;
+      },
+      child: Obx(() {
+        if (_categoriesController.categories.isEmpty) {
+          return Center(child: Text('No categories found'));
+        }
+
+        List<String> categories = _categoriesController.categories;
+        int itemsPerPage = 6; // 2x3 grid
+        int totalPages = (categories.length / itemsPerPage).ceil();
+
+        return Listener(
+          onPointerSignal: (event) {
+            if (event is PointerScrollEvent) {
+              if (event.scrollDelta.dy > 0) {
+                // Scroll down -> Next page
+                if (_pageController.page! < totalPages - 1) {
+                  _pageController.nextPage(
+                    duration: Duration(milliseconds: 300),
+                    curve: Curves.easeInOut,
+                  );
+                }
+              } else if (event.scrollDelta.dy < 0) {
+                // Scroll up -> Previous page
+                if (_pageController.page! > 0) {
+                  _pageController.previousPage(
+                    duration: Duration(milliseconds: 300),
+                    curve: Curves.easeInOut,
+                  );
+                }
               }
+            }
+          },
+          child: PageView.builder(
+            controller: _pageController,
+            itemCount: totalPages,
+            physics: BouncingScrollPhysics(), // Improves feel on touchscreens
+            itemBuilder: (context, pageIndex) {
+              int startIndex = pageIndex * itemsPerPage;
+              int endIndex = (startIndex + itemsPerPage).clamp(0, categories.length);
+              List<String> pageCategories = categories.sublist(startIndex, endIndex);
 
-              //builds a display for the list of words that satisfy your search
-              return ListView.builder(
-                itemCount: filteredWords.length,
+              return GridView.builder(
+                physics: NeverScrollableScrollPhysics(), // Prevents conflicts
+                gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                  crossAxisCount: 2, // 2 columns
+                  mainAxisSpacing: 10,
+                  crossAxisSpacing: 10,
+                ),
+                padding: EdgeInsets.all(10),
+                itemCount: pageCategories.length,
                 itemBuilder: (context, index) {
-                  WordModel word = filteredWords[index];
+                  String category = pageCategories[index];
 
-                  return Card( //the displayed content of that word, for this screen
-                    child: ListTile(
-                      title: Text(
-                        word.word,
-                        style: TextStyle(fontWeight: FontWeight.bold),
+                  return GestureDetector(
+                    onTap: () {
+                      _selectedCategory.value = category;
+                    },
+                    child: Container(
+                      decoration: BoxDecoration(
+                        color: _colorMap[category] ?? Colors.grey,
+                        borderRadius: BorderRadius.circular(10),
                       ),
-                      subtitle: Text(
-                        '${word.category.join(', ')}\n${word.definition}',
-                      ),
-                      trailing: Row(
-                        mainAxisSize: MainAxisSize.min,
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
                         children: [
-                          IconButton(
-                            icon: Obx(
-                              () => Icon(
-                                _bookmarkController.isBookmarked(word)
-                                    ? Icons.bookmark_remove
-                                    : Icons.bookmark_add_outlined,
-                                color:
-                                    _bookmarkController.isBookmarked(word)
-                                        ? Colors.indigoAccent
-                                        : null,
-                              ),
-                            ),
-                            onPressed: () {
-                              _bookmarkController.toggleBookmark(word);
-                            },
+                          Icon(
+                            _iconMap[category] ?? Icons.category,
+                            size: 80,
+                            color: Colors.white,
                           ),
-                          IconButton(
-                            icon: const Icon(Icons.arrow_forward),
-                            onPressed: () {
-                              Get.to(
-                                () => WordScreen(word: word),
-                              ); 
-                            },
+                          SizedBox(height: 8),
+                          Text(
+                            category,
+                            style: TextStyle(
+                              fontWeight: FontWeight.bold,
+                              color: Colors.white,
+                            ),
                           ),
                         ],
                       ),
@@ -290,214 +317,71 @@ class _DictionaryScreenState extends State<DictionaryScreen> with SingleTickerPr
                   );
                 },
               );
-            }),
+            },
           ),
-        ],
-      );
-    });
+        );
+      }),
+    );
   }
 
-  //builds the categories tab
-  Widget _buildCategoriesTab() {
-    //initializes the displayed dictionary content, if any
-    if (_dictController.dictionary.isEmpty) {
-      _dictController.fetchDictionary(context);
-    }
+  Widget _buildCategoryWords() {
+    List<WordModel> words = _selectedCategory.value == "Bookmarks"
+        ? _bookmarkController.bookmarks
+        : _dictController.dictionary.where(
+            (word) => word.category.contains(_selectedCategory.value),
+          ).toList();
 
-    if (_categoriesController.categories.isEmpty){
-      _categoriesController.fetchCategories(context);
-    }
-    return Obx(() {
-      if (_selectedWord.value != null) {
-        return WordScreen(
-          word: _selectedWord.value!,
-          onBack: () => _selectedWord.value = null,
-        );
-      }
-
-      //if no words satisfy your search entry
-      if (_categoriesController.categories.isEmpty) {
-        return Center(child: Text('No categories found'));
-      }
-
-      //if you haven't selected a category yet, display all categories
-      if (_selectedCategory.value.isEmpty) { 
-        return GridView.builder(
-            gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-              crossAxisCount: 3,
-              crossAxisSpacing: 10,
-              mainAxisSpacing: 10,
-            ), 
-            itemCount: _categoriesController.categories.length,
-            itemBuilder: (context, index) {
-              var category = _categoriesController.categories[index];
-              return GestureDetector(
-                onTap: () {
-                  _selectedCategory.value = category;
-                },
-                child: Container(
-                  decoration: BoxDecoration(
-                    color: _colorMap[category],
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Icon(
-                        _iconMap[category],
-                        size: 80,
-                        color: Colors.white,
-                      ),
-                      SizedBox(height: 8),
-                      Text(
-                        category,
-                        style: TextStyle(
-                          fontWeight: FontWeight.bold,
-                          color: Colors.white,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              );
+    return Column(
+      children: [
+        ListTile(
+          leading: IconButton(
+            icon: Icon(Icons.arrow_back),
+            onPressed: () {
+              _selectedCategory.value = '';
             },
-          );
-      } else { //else show the contents of that category
-        return Column(
+          ),
+          title: Text(_selectedCategory.value),
+        ),
+        Expanded(
+          child: ListView(
+            children: words.map((word) => _buildWordTile(word)).toList(),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildWordTile(WordModel word) {
+    return Card(
+      child: ListTile(
+        title: Text(word.word, style: TextStyle(fontWeight: FontWeight.bold)),
+        subtitle: Text('${word.category.join(', ')}\n${word.definition}'),
+        trailing: Row(
+          mainAxisSize: MainAxisSize.min,
           children: [
-            ListTile(
-              leading: IconButton(
-                icon: Icon(Icons.arrow_back),
-                onPressed: () {
-                  setState(() {
-                    _selectedCategory.value = ''; // Reset selected category, only if you click back
-                  });
-                },
+            IconButton(
+              icon: Obx(
+                () => Icon(
+                  _bookmarkController.isBookmarked(word)
+                      ? Icons.bookmark_remove
+                      : Icons.bookmark_add_outlined,
+                  color: _bookmarkController.isBookmarked(word) ? Colors.indigoAccent : null,
+                ),
               ),
-              title: Text(_selectedCategory.value),
+              onPressed: () {
+                _bookmarkController.toggleBookmark(word);
+              },
             ),
-            Expanded(
-              child: ListView( //lists words in the dictionary that are of the selected category
-                children:
-                    _dictController.dictionary
-                        .where(
-                          (word) =>
-                              word.category.contains(_selectedCategory.value),
-                        )
-                        .map(
-                          (word) => Card(
-                            child: ListTile(
-                              title: Text(
-                                word.word,
-                                style: TextStyle(fontWeight: FontWeight.bold),
-                              ),
-                              subtitle: Text('${word.category.join(', ')}\n${word.definition}'),
-                              trailing: Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  IconButton(
-                                    icon: Obx(
-                                      () => Icon(
-                                        _bookmarkController.isBookmarked(word)
-                                            ? Icons.bookmark_remove
-                                            : Icons.bookmark_add_outlined,
-                                        color:
-                                            _bookmarkController.isBookmarked(
-                                                  word,
-                                                )
-                                                ? Colors.indigoAccent
-                                                : null,
-                                      ),
-                                    ),
-                                    onPressed: () {
-                                      _bookmarkController.toggleBookmark(word);
-                                    },
-                                  ),
-                                  IconButton(
-                                    icon: const Icon(Icons.arrow_forward),
-                                    onPressed: () {
-                                      Get.to(
-                                        () => WordScreen(word: word),
-                                      );
-                                    },
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ),
-                        )
-                        .toList(),
-              ),
+            IconButton(
+              icon: const Icon(Icons.arrow_forward),
+              onPressed: () {
+                Get.to(() => WordScreen(word: word));
+              },
             ),
           ],
-        );
-      }
-    });
-  }
-
-  //builds the bookmarks tab
-  Widget _buildBookmarksTab() {
-    return Obx(() {
-      final bookmarkedWords = _bookmarkController.bookmarks;
-
-      //checks if there are bookmarked words
-      if (bookmarkedWords.isEmpty) {
-        return Center(child: Text('No Bookmarked Words'));
-      }
-
-      if (_selectedWord.value != null) {
-        return WordScreen(
-          word: _selectedWord.value!,
-          onBack: () => _selectedWord.value = null,
-        );
-      }
-
-      //shows only the words in the bookmark controller's list
-      return ListView.builder(
-        itemCount: bookmarkedWords.length,
-        itemBuilder: (context, index) {
-          WordModel word = bookmarkedWords[index];
-          return Card(
-            child: ListTile(
-              title: Text(
-                word.word,
-                style: TextStyle(fontWeight: FontWeight.bold),
-              ),
-              subtitle: Text('${word.category.join(', ')}\n${word.definition}'),
-              trailing: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  IconButton(
-                    icon: Obx(
-                      () => Icon(
-                        _bookmarkController.isBookmarked(word)
-                            ? Icons.bookmark_remove
-                            : Icons.bookmark_add_outlined,
-                        color:
-                            _bookmarkController.isBookmarked(word)
-                                ? Colors.indigoAccent
-                                : null,
-                      ),
-                    ),
-                    onPressed: () {
-                      _bookmarkController.toggleBookmark(word);
-                    },
-                  ),
-                  IconButton(
-                    icon: const Icon(Icons.arrow_forward),
-                    onPressed: () {
-                      Get.to(
-                        () => WordScreen(word: word),
-                      );
-                    },
-                  ),
-                ],
-              ),
-            ),
-          );
-        },
-      );
-    });
+        ),
+      ),
+    );
   }
 
   //builds the drawer for the menu
@@ -538,7 +422,6 @@ class _DictionaryScreenState extends State<DictionaryScreen> with SingleTickerPr
 
   @override
   void dispose() {
-    _tabController.dispose();
     _searchController.dispose();
     super.dispose();
   }

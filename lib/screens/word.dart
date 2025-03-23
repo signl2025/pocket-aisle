@@ -3,7 +3,6 @@ import 'dart:io';
 //path package is for platform-agnotic file pathing
 //scheduler is to ensure the video loads
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:get/get.dart';
 import 'package:media_kit/media_kit.dart';
 import 'package:media_kit_video/media_kit_video.dart';
@@ -267,7 +266,7 @@ class _WordScreenState extends State<WordScreen> {
 
               if (_isVideoAvailable)
                 AspectRatio(
-                  aspectRatio: 16 / 9,
+                  aspectRatio: .5,
                   child: Stack(
                     children: [
                       _videoPath == null || _controller == null

@@ -19,6 +19,7 @@ class CategoriesController extends GetxController {
     try {
       final fetchedCategories = await APIs.getCategories(context); //context means 'in this part of the application process'
       fetchedCategories.sort((a, b) => a.compareTo(b)); //sorts the dictionary
+      fetchedCategories.add("Bookmarks");
       categories.assignAll(fetchedCategories); //same as before but from the newly fetched dictionary
       Pref.categories = fetchedCategories;
       update();

@@ -8,18 +8,21 @@ import '../controllers/dictionary_controller.dart';
 import '../helpers/pref.dart';
 
 class HomeScreen extends StatelessWidget {
-  @override
-  Widget build(BuildContext context) {
+  Future<void> initialize(BuildContext context) async{
     //fetch dictionary, and validate bookmarks to remove non-existent words
     final DictionaryController dictController = Get.find<DictionaryController>();
-    dictController.fetchDictionary(context);
+    await dictController.fetchDictionary(context);
     Pref.validateBookmarks();
     //fetch categories from file
     final CategoriesController catController = Get.find<CategoriesController>();
-    catController.fetchCategories(context);
+    await catController.fetchCategories(context);
     //fetch bookmarks from pref data
     final BookmarkController bookController = Get.find<BookmarkController>();
     bookController.fetchBookmarks();
+  }
+  @override
+  Widget build(BuildContext context) {
+    initialize(context);
     return Scaffold(
       body: GestureDetector(
         onTap: () {
