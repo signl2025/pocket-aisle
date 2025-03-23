@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:get/get.dart';
-import 'package:pocket_aisle/controllers/categories_controller.dart';
 
 import '../controllers/bookmark_controller.dart';
+import '../controllers/categories_controller.dart';
 import '../controllers/dictionary_controller.dart';
-import '../helpers/pref.dart'; // For navigation
+import '../helpers/pref.dart';
 
 class HomeScreen extends StatelessWidget {
   @override

@@ -6,8 +6,8 @@ import 'dictionary_controller.dart';
 //controller for autodownload
 class AutoDownloadController extends GetxController {
   final dictController = Get.find<DictionaryController>();
-  RxBool isAutoDownloadEnabled = false.obs;
-  RxBool isAutoDownloadMissingEnabled = false.obs;
+  RxBool isAutoDownloadEnabled = true.obs;
+  RxBool isAutoDownloadMissingEnabled = true.obs;
 
   @override
   void onInit() async {

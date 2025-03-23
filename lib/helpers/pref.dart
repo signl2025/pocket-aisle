@@ -35,7 +35,7 @@ class Pref {
   //returns the current autodl setting, also is a variable
   static Future<bool> get isAutoDownloadEnabled async {
     return SharedPreferences.getInstance().then((prefs) {
-      return prefs.getBool('autoDownload') ?? false;
+      return prefs.getBool('autoDownload') ?? true;
     });
   }
 
@@ -48,7 +48,7 @@ class Pref {
   //returns the current autodl setting, also is a variable
   static Future<bool> get isAutoDownloadMissingEnabled async {
     return SharedPreferences.getInstance().then((prefs) {
-      return prefs.getBool('autoDownloadMissing') ?? false;
+      return prefs.getBool('autoDownloadMissing') ?? true;
     });
   }
 

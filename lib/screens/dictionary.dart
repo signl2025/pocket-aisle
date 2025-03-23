@@ -140,7 +140,7 @@ class _DictionaryScreenState extends State<DictionaryScreen> with SingleTickerPr
           mainAxisSize: MainAxisSize.min,
           children: [
             CustomAppBar(
-              title: 'Dictionary',
+              title: ' Assistive Instruction for \nSign Language Education',
               onMenuPressed: () {
                 _scaffoldKey.currentState?.openDrawer(); //opens menu
               },
@@ -508,7 +508,7 @@ class _DictionaryScreenState extends State<DictionaryScreen> with SingleTickerPr
           ListTile(
             leading: Icon(Icons.local_library),
             title: const Text(
-              'Dictionary',
+              'Home',
               style: TextStyle(
                 fontWeight: FontWeight.bold,
               ),

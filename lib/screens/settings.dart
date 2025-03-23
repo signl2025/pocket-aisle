@@ -353,7 +353,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
             ListTile(
               leading: Icon(Icons.local_library),
               title: const Text(
-                'Dictionary',
+                'Home',
                 style: TextStyle(
                   fontWeight: FontWeight.bold,
                 ),
